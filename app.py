@@ -22,6 +22,8 @@ if "vectorstore" not in st.session_state:
     st.session_state.vectorstore = None
 if "docs_info" not in st.session_state:
     st.session_state.docs_info = []
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 # Save uploaded file to a temporary location
 def save_uploaded_file(uploaded_file) -> str:
@@ -138,11 +140,17 @@ if st.button("Build Index"):
 
 # Streamlit Q&A portion
 st.header("Ask your question")
-question = st.text_input("Enter your question here")
+st.subheader("Chat History")
 number_of_chunks = st.slider("How many chunks?", 1,8,4)
-ask = st.button("Ask")
-st.write("Answer: ")   
-if ask:
+for msg in st.session_state.chat_history:
+    if msg["role"] == "user":
+        with st.chat_message("user"):
+            st.write(msg["content"])
+    else:
+        with st.chat_message("assistant"):
+            st.write(msg["content"])
+question = st.chat_input("Enter the question here")
+if question:
     if st.session_state.vectorstore is None:
         st.error("Upload a file to build index first")
         st.stop()
@@ -154,13 +162,15 @@ if ask:
             context_blocks = []
             for d in retrieved:
                 page = d.metadata.get("page")
-                header = ""
-                if page is not None:
-                    header = f"[page {page}]"
+                header = f"[page {page}]" if page is not None else ""
                 context_blocks.append(header + d.page_content)
             prompt = groq_prompt(context_blocks, question)   
             answer = call_groq_api(prompt)
-            st.subheader("Answer")
-            st.write(answer)
+            st.session_state.chat_history.append({"role":"user", "content": question})
+            st.session_state.chat_history.append({"role":"assistant", "content": answer})
+            with st.chat_message("assistant"):
+                st.write(question)
+                st.write(answer)
+        st.session_state.user_question = ""
     except Exception as e:
         st.error(f"Q&A failed {e}")
