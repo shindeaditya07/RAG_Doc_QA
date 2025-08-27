@@ -9,4 +9,4 @@ langchain-groq
 pypdf
 pymupdf
 langchain-text-splitters
-transformers
+sentence-transformers
